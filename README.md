@@ -18,12 +18,18 @@ It provides APIs for products, deliveries, stores, and analytics.
 
 ## 🏗 Architecture
 
-├── config/ # Database & environment setup
-├── controllers/ # Business logic & request handlers
-├── middlewares/ # Auth, validation, error handling
-├── models/ # Database schemas & models
-├── routes/ # API endpoints
-└── server/ # Express app entry point
+ .
+├──  config
+│   └──  database.js
+├──  controllers
+├──  middlewares
+├──  models
+├──  package-lock.json
+├──  package.json
+├──  README.md
+├──  routes
+├──  server.js
+└──  utils
 
 
 ---
