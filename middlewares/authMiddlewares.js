@@ -9,18 +9,18 @@ export const protect = async(req,res,next) =>{
     }
 
 
-const token = authHeader.split(" ")[1];
-const tokenDoc = await Token.findOne({ token });
-if (!tokenDoc) return res.status(401).json({message : "Logged out or invalid token"});
+   const token = authHeader.split(" ")[1];
+   const tokenDoc = await Token.findOne({ token });
+   if (!tokenDoc) return res.status(401).json({message : "Logged out or invalid token"});
 
 
- try{
+  try{
 
     const decoded = jwt.verify(token , process.env.JWT_SECRET);
     req.user = await User.findById(decoded.id).select("-password");
     next();
 
- } catch(err){
+  } catch(err){
      res.status(404).json({message : "Token invalid"});
  }
 
