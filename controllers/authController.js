@@ -1,5 +1,5 @@
 import User from "../models/User.js"
-import {generateToken , logoutUser} from "../services/authService.js";
+import {generateToken , logoutUser} from "../services/authServices.js";
 
 
 // Register new User 
@@ -16,7 +16,7 @@ export const register = async(req,res,next) =>{
         const token = await generateToken(user);
         res.status(201).json({token , user : {id: user._id , name : user.name , role : user.role}});
     } catch (err){
-      next(err);
+         res.status(500).json({ error: err.message });
     }
 }
 
@@ -26,23 +26,33 @@ export const login = async (req,res , next) =>{
         const user = await User.findOne({email});
         if(user && (await user.matchPassword(password))){
            const token = await generateToken(user);
-           return res.json({token , user : {id: user._id , name : user.name , role : user.role}});
+           return res.status(200).json({token , user : {id: user._id , name : user.name , role : user.role}});
         }
         res.status(401).json({message : "Invalid credentials"});
     } catch (err) {
-        next(err);
+           res.status(500).json({ error: err.message });
     }
 
 }
 
-export const logout = async (req,res,next) =>{
-    try {
-        
-       const token = req.headers.authorization.split(" ")[1];
-       await logoutUser(token)     
- 
-          
-    } catch (err) {
-      next(err);  
+export const logout = async (req,res,next) => {
+  try {
+  
+    const authHeader = req.headers["authorization"];
+console.log("Authorization header:", authHeader);
+
+    if (!authHeader?.startsWith("Bearer ")) {
+      return res.status(400).json({ message: "Token required" });
     }
-}
+
+    const token = authHeader.split(" ")[1];
+
+    const deleted = await logoutUser(token);
+    if (!deleted) return res.status(404).json({ message: "Token not found" });
+
+    res.status(200).json({ message: "Logged out successfully" });
+  } catch (err) {
+    console.error("Logout error:", err.message);
+    next(err);
+  }
+};

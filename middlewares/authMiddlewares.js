@@ -1,10 +1,10 @@
 import jwt from "jsonwebtoken";
-import Token from "../models/Token";
-import User from "../models/User";
+import Token from "../models/Token.js";
+import User from "../models/User.js";
 
 export const protect = async(req,res,next) =>{
-    const authHeader = req.headers.authorization;
-    if(!authHeader?.startsWith("Bearer")){
+    const authHeader = req.headers["authorization"];
+    if (!authHeader?.startsWith("Bearer ")) {
         return res.status(401).json({message : "Not authorized , no token"});
     }
 

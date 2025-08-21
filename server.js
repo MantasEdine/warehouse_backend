@@ -26,7 +26,7 @@ connectDB();
 app.get("/", (req, res) => {
   res.send("Hello World 🚀");
 });
-app.user("/api/auth",authRoutes);
+app.use("/api/auth",authRoutes);
 
 // 404 handler
 app.use((req, res, next) => {
