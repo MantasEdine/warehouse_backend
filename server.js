@@ -6,7 +6,7 @@ import helmet from "helmet";
 import createHttpError from "http-errors"; // not used yet
 import { connectDB } from "./config/database.js";
 import cookieParser from "cookie-parser";
-
+import authRoutes from "./routes/authRoutes.js"
 dotenv.config();
 
 const app = express();
@@ -26,6 +26,7 @@ connectDB();
 app.get("/", (req, res) => {
   res.send("Hello World 🚀");
 });
+app.user("/api/auth",authRoutes);
 
 // 404 handler
 app.use((req, res, next) => {
