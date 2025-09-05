@@ -7,6 +7,7 @@ import createHttpError from "http-errors"; // not used yet
 import { connectDB } from "./config/database.js";
 import cookieParser from "cookie-parser";
 import authRoutes from "./routes/authRoutes.js"
+import productsRoutes from "./routes/productRoutes.js"
 dotenv.config();
 
 const app = express();
@@ -27,11 +28,9 @@ app.get("/", (req, res) => {
   res.send("Hello World 🚀");
 });
 app.use("/api/auth",authRoutes);
+app.use("/api/products",productsRoutes);
 
-// 404 handler
-app.use((req, res, next) => {
-  next(createHttpError(404, "Not Found"));
-});
+
 
 // Error handler
 app.use((err, req, res, next) => {
