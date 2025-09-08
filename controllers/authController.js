@@ -4,7 +4,7 @@ import {generateToken , logoutUser} from "../services/authServices.js";
 
 // Register new User 
 
-export const register = async(req,res,next) =>{
+export const register = async(req,res) =>{
     try {
         const {name , email , role , password} = req.body;
         const userExists = await User.findOne({email});
@@ -20,7 +20,7 @@ export const register = async(req,res,next) =>{
     }
 }
 
-export const login = async (req,res , next) =>{
+export const login = async (req,res) =>{
     try {
         const {email , password} = req.body;
         const user = await User.findOne({email});
@@ -39,7 +39,6 @@ export const logout = async (req,res,next) => {
   try {
   
     const authHeader = req.headers["authorization"];
-console.log("Authorization header:", authHeader);
 
     if (!authHeader?.startsWith("Bearer ")) {
       return res.status(400).json({ message: "Token required" });

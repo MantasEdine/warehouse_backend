@@ -1,26 +1,27 @@
-
-
 import mongoose from "mongoose";
 
-
-
-const DeliveryGuySchema = new mongoose.Schema ({
-
-   
-     name : {
-        type : String,
-        required : true,
-        unique : true
-     },
-     truckModel : {
-        type : String, 
-        required : false
-     },
-      productsOwned: [
+const DeliveryGuySchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    email: {
+      type: String,
+      required: true,
+      unique: true, // better uniqueness than name
+      lowercase: true,
+    },
+    truckModel: {
+      type: String,
+      required: false,
+    },
+    productsOwned: [
       {
         product: {
           type: mongoose.Schema.Types.ObjectId,
-          ref: "Product", // references the Product model
+          ref: "Product",
           required: true,
         },
         quantity: {
@@ -28,19 +29,13 @@ const DeliveryGuySchema = new mongoose.Schema ({
           required: true,
           min: 0,
         },
-        
-
       },
     ],
+  },
+  {
+    timestamps: true,
+  }
+);
 
-      
-      
-},
-
-{
-    timestamps : true
-
-})
-
-const DeliveryGuy = mongoose.model("deliveryGuy",DeliveryGuySchema);
+const DeliveryGuy = mongoose.model("DeliveryGuy", DeliveryGuySchema);
 export default DeliveryGuy;

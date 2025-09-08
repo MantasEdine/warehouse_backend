@@ -24,7 +24,7 @@ export const createProduct = async (req, res) => {
     if (existing) {
       return res.status(400).json({ message: "Product already exists" });
     }
-    console.log("test1")
+    // console.log("test1")
 
     const product = await Product.create({ name, quantity });
     return res.status(201).json(product);
@@ -65,13 +65,16 @@ export const deleteProduct = async (req, res) => {
 // @route   PATCH /api/products/:id
 export const updateProduct = async (req, res) => {
   const { name, quantity } = req.body;
-
+  const updateData = {};
   try {
+    if (name !== undefined) updateData.name = name;
+    if (quantity !== undefined) updateData.quantity = quantity;
+
     const updatedProduct = await Product.findByIdAndUpdate(
-      req.params.id,
-      { name, quantity },
-      { new: true, runValidators: true }
-    );
+     req.params.id,
+     updateData,
+     { new: true, runValidators: true }
+  );
 
     if (!updatedProduct) {
       return res.status(404).json({ message: "Product not found" });
