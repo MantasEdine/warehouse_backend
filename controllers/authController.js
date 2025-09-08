@@ -26,7 +26,7 @@ export const login = async (req,res) =>{
         const user = await User.findOne({email});
         if(user && (await user.matchPassword(password))){
            const token = await generateToken(user);
-           return res.status(200).json({token , user : {id: user._id , name : user.name , role : user.role}});
+           return res.status(200).json({token , user : {id: user._id , name : user.name , email : user.email , role : user.role}});
         }
         res.status(401).json({message : "Invalid credentials"});
     } catch (err) {
