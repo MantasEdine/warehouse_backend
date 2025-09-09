@@ -18,16 +18,15 @@ export const getAllDrivers = async (req, res) => {
 // @route PATCH /api/drivers/:id
 export const updateDriver = async (req, res, next) => {
   try {
-    console.log("PATCH request body:", req.body)
+    console.log("PATCH request body:", req.body);
     const { id } = req.params;
     const userRole = req.user.role;
-    console.log(req.user)
     const userId = req.user._id;
 
     const driver = await DeliveryGuy.findById(id).populate("productsOwned.product");
     if (!driver) return res.status(404).json({ message: "Driver not found" });
 
-    // DRIVER RESTRICTIONS
+    // === DRIVER RESTRICTIONS ===
     if (userRole === "driver") {
       if (driver.user.toString() !== userId.toString()) {
         return res.status(403).json({ message: "Forbidden" });
@@ -36,62 +35,72 @@ export const updateDriver = async (req, res, next) => {
         return res.status(400).json({ message: "No products provided to update" });
       }
 
-      await Promise.all(
-        req.body.productsOwned.map(async (updateItem) => {
-          const existingItem = driver.productsOwned.find(
-            (p) => p.product._id.toString() === updateItem.productId
-          );
-          if (!existingItem) return;
+      // Driver can only reduce stock they already own
+      for (const updateItem of req.body.productsOwned) {
+        const existingItem = driver.productsOwned.find(
+          (p) => p.product._id.toString() === updateItem.productId
+        );
+        if (!existingItem) continue;
 
+        if (updateItem.quantity > existingItem.quantity) {
+          return res.status(400).json({ message: "Drivers cannot increase stock" });
+        }
+
+        // return difference to warehouse
+        const delta = existingItem.quantity - updateItem.quantity;
+        if (delta > 0) {
           const product = await Product.findById(existingItem.product._id);
+          if (product) {
+            product.quantity += delta;
+            await product.save();
+          }
+        }
+
+        existingItem.quantity = updateItem.quantity;
+      }
+
+      await driver.save();
+      await driver.populate("productsOwned.product");
+      return res.status(200).json(driver);
+    }
+
+    // === ADMIN CAN UPDATE EVERYTHING ===
+    const { name, email, truckModel, productsOwned } = req.body;
+    if (name) driver.name = name;
+    if (email) driver.email = email;
+    if (truckModel) driver.truckModel = truckModel;
+
+    if (productsOwned && productsOwned.length) {
+      for (const updateItem of productsOwned) {
+        const existingItem = driver.productsOwned.find(
+          (p) => p.product._id.toString() === updateItem.productId
+        );
+        const product = await Product.findById(updateItem.productId);
+        if (!product) continue;
+
+        if (existingItem) {
+          // adjust warehouse stock based on delta
           const delta = updateItem.quantity - existingItem.quantity;
           product.quantity -= delta;
           if (product.quantity < 0) product.quantity = 0;
           await product.save();
 
           existingItem.quantity = updateItem.quantity;
-        })
-      );
-
-      await driver.save();
-      return res.status(200).json(driver);
-    }
-
-    // ADMIN CAN UPDATE EVERYTHING
-    const { name, email, truckModel, productsOwned } = req.body;
-    if (name) driver.name = name;
-    if (email) driver.email = email;
-    if (truckModel) driver.truckModel = truckModel;
-
-    if (productsOwned) {
-      await Promise.all(
-        productsOwned.map(async (updateItem) => {
-          const existingItem = driver.productsOwned.find(
-            (p) => p.product.toString() === updateItem.productId
-          );
-          const product = await Product.findById(updateItem.productId);
-          if (!product) return;
-
-          if (existingItem) {
-            const delta = updateItem.quantity - existingItem.quantity;
-            product.quantity -= delta;
-            if (product.quantity < 0) product.quantity = 0;
-            await product.save();
-            existingItem.quantity = updateItem.quantity;
-          } else {
-            driver.productsOwned.push({
-              product: updateItem.productId,
-              quantity: updateItem.quantity,
-            });
-            product.quantity -= updateItem.quantity;
-            if (product.quantity < 0) product.quantity = 0;
-            await product.save();
-          }
-        })
-      );
+        } else {
+          // new product assignment
+          driver.productsOwned.push({
+            product: updateItem.productId,
+            quantity: updateItem.quantity,
+          });
+          product.quantity -= updateItem.quantity;
+          if (product.quantity < 0) product.quantity = 0;
+          await product.save();
+        }
+      }
     }
 
     await driver.save();
+    await driver.populate("productsOwned.product");
     return res.status(200).json(driver);
   } catch (err) {
     console.error("Update driver error:", err);
