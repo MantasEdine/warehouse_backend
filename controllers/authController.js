@@ -1,51 +1,82 @@
-import User from "../models/User.js"
-import {generateToken , logoutUser} from "../services/authServices.js";
+import User from "../models/User.js";
+import DeliveryGuy from "../models/DeliveryGuy.js";
+import { generateToken, logoutUser } from "../services/authServices.js";
 
-
-// Register new User 
-
-export const register = async(req,res) =>{
-    try {
-        const {name , email , role , password} = req.body;
-        const userExists = await User.findOne({email});
-        if(userExists){
-            return res.status(400).json({message : "User Already Exist , oopsi"});
-
-        }
-        const user = await User.create({name , email , role , password});
-        const token = await generateToken(user);
-        res.status(201).json({token , user : {id: user._id , name : user.name , role : user.role}});
-    } catch (err){
-         res.status(500).json({ error: err.message });
-    }
-}
-
-export const login = async (req,res) =>{
-    try {
-        const {email , password} = req.body;
-        const user = await User.findOne({email});
-        if(user && (await user.matchPassword(password))){
-           const token = await generateToken(user);
-           return res.status(200).json({token , user : {id: user._id , name : user.name , email : user.email , role : user.role}});
-        }
-        res.status(401).json({message : "Invalid credentials"});
-    } catch (err) {
-           res.status(500).json({ error: err.message });
-    }
-
-}
-
-export const logout = async (req,res,next) => {
+// @desc Register new User
+export const register = async (req, res) => {
   try {
-  
-    const authHeader = req.headers["authorization"];
+    const { name, email, role, password } = req.body;
 
+    const userExists = await User.findOne({ email });
+    if (userExists) {
+      return res.status(400).json({ message: "User Already Exist , oopsi" });
+    }
+
+    const user = await User.create({ name, email, role, password });
+
+    // If driver, create DeliveryGuy linked to user
+    let driver = null;
+    if (role === "driver") {
+    
+      driver = await DeliveryGuy.create({
+        user: user._id,
+        name,
+        email,
+        productsOwned: [],
+      });
+    }
+
+    const token = await generateToken(user);
+
+    res.status(201).json({
+      token,
+      user: { id: user._id, name: user.name, email: user.email, role: user.role },
+      driver: driver || null,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// @desc Login
+export const login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const user = await User.findOne({ email });
+
+    if (user && (await user.matchPassword(password))) {
+      let driver = null;
+
+      if (user.role === "driver") {
+        driver = await DeliveryGuy.findOne({ user: user._id }).populate(
+          "productsOwned.product"
+        );
+      }
+
+      const token = await generateToken(user);
+
+      return res.status(200).json({
+        token,
+        user: { id: user._id, name: user.name, email: user.email, role: user.role },
+        driver,
+      });
+    }
+
+    res.status(401).json({ message: "Invalid credentials" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// @desc Logout
+export const logout = async (req, res, next) => {
+  try {
+    const authHeader = req.headers["authorization"];
     if (!authHeader?.startsWith("Bearer ")) {
       return res.status(400).json({ message: "Token required" });
     }
 
     const token = authHeader.split(" ")[1];
-
     const deleted = await logoutUser(token);
     if (!deleted) return res.status(404).json({ message: "Token not found" });
 

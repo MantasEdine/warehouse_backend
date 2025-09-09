@@ -8,6 +8,10 @@ import { connectDB } from "./config/database.js";
 import cookieParser from "cookie-parser";
 import authRoutes from "./routes/authRoutes.js"
 import productsRoutes from "./routes/productRoutes.js"
+import deliveryGuyRoutes from "./routes/deliveryGuyRoutes.js";
+
+
+
 dotenv.config();
 
 const app = express();
@@ -29,6 +33,7 @@ app.get("/", (req, res) => {
 });
 app.use("/api/auth",authRoutes);
 app.use("/api/products",productsRoutes);
+app.use("/api/drivers", deliveryGuyRoutes);
 
 
 
