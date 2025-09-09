@@ -3,6 +3,7 @@ import {
   getAllDrivers,
   updateDriver,
   deleteDriver,
+  removeDriverProduct
 } from "../controllers/deliveryGuyController.js";
 import { protect } from "../middlewares/authMiddlewares.js";
 
