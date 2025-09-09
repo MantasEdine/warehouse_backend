@@ -126,3 +126,36 @@ export const deleteDriver = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+// @desc Remove a product from a driver’s stock
+// @route PATCH /api/drivers/:id/remove
+export const removeDriverProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { productId } = req.body;
+
+    const driver = await DeliveryGuy.findById(id).populate("productsOwned.product");
+    if (!driver) return res.status(404).json({ message: "Driver not found" });
+
+    const existingItemIndex = driver.productsOwned.findIndex(
+      (p) => p.product._id.toString() === productId
+    );
+    if (existingItemIndex === -1) {
+      return res.status(404).json({ message: "Product not found in driver stock" });
+    }
+
+    // restore stock back to main warehouse
+    const existingItem = driver.productsOwned[existingItemIndex];
+    const product = await Product.findById(existingItem.product._id);
+    if (product) {
+      product.quantity += existingItem.quantity;
+      await product.save();
+    }
+
+    driver.productsOwned.splice(existingItemIndex, 1); // remove product from driver
+    await driver.save();
+
+    res.status(200).json(driver);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};

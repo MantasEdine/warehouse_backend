@@ -12,5 +12,7 @@ const router = express.Router();
 router.get("/", getAllDrivers);
 router.patch("/:id", protect , updateDriver);
 router.delete("/:id", protect , deleteDriver);
+router.patch("/api/drivers/:id/remove", protect, removeDriverProduct);
+
 
 export default router;
