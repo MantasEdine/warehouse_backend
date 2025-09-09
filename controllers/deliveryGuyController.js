@@ -154,15 +154,20 @@ export const removeDriverProduct = async (req, res) => {
     if (!driver) return res.status(404).json({ message: "Driver not found" });
 
     const existingItemIndex = driver.productsOwned.findIndex(
-      (p) => p.product._id.toString() === productId
+      (p) =>
+        (p.product?._id?.toString() || p.product.toString()) === productId
     );
+
     if (existingItemIndex === -1) {
       return res.status(404).json({ message: "Product not found in driver stock" });
     }
 
     // restore stock back to main warehouse
     const existingItem = driver.productsOwned[existingItemIndex];
-    const product = await Product.findById(existingItem.product._id);
+    const product = await Product.findById(
+      existingItem.product?._id || existingItem.product
+    );
+
     if (product) {
       product.quantity += existingItem.quantity;
       await product.save();
@@ -173,6 +178,7 @@ export const removeDriverProduct = async (req, res) => {
 
     res.status(200).json(driver);
   } catch (err) {
+    console.error("Remove driver product error:", err);
     res.status(500).json({ error: err.message });
   }
 };
