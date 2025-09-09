@@ -18,6 +18,7 @@ export const getAllDrivers = async (req, res) => {
 // @route PATCH /api/drivers/:id
 export const updateDriver = async (req, res, next) => {
   try {
+    console.log("PATCH request body:", req.body)
     const { id } = req.params;
     const userRole = req.user.role;
     console.log(req.user)
