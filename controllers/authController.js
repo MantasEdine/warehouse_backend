@@ -15,6 +15,7 @@ export const register = async (req, res) => {
     const user = await User.create({ name, email, role, password });
 
     // If driver, create DeliveryGuy linked to user
+   //  "without passing role wont work"
     let driver = null;
     if (role === "driver") {
     

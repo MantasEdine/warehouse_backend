@@ -17,16 +17,15 @@ export const getAllProducts = async (req, res) => {
 // @desc    Create new product
 // @route   POST /api/products
 export const createProduct = async (req, res) => {
-  const { name, quantity = 0 } = req.body;
+  const { name, quantity = 0, price, currency = "DZA" } = req.body;
 
   try {
     const existing = await Product.findOne({ name });
     if (existing) {
       return res.status(400).json({ message: "Product already exists" });
     }
-    // console.log("test1")
 
-    const product = await Product.create({ name, quantity });
+    const product = await Product.create({ name, quantity, price, currency });
     return res.status(201).json(product);
   } catch (error) {
     return res.status(500).json({ error: error.message });
@@ -61,20 +60,21 @@ export const deleteProduct = async (req, res) => {
   }
 };
 
-// @desc    Update product (name, quantity)
+// @desc    Update product (name, quantity, price)
 // @route   PATCH /api/products/:id
 export const updateProduct = async (req, res) => {
-  const { name, quantity } = req.body;
+  const { name, quantity, price } = req.body;
   const updateData = {};
   try {
     if (name !== undefined) updateData.name = name;
     if (quantity !== undefined) updateData.quantity = quantity;
+    if (price !== undefined) updateData.price = price;
 
     const updatedProduct = await Product.findByIdAndUpdate(
-     req.params.id,
-     updateData,
-     { new: true, runValidators: true }
-  );
+      req.params.id,
+      updateData,
+      { new: true, runValidators: true }
+    );
 
     if (!updatedProduct) {
       return res.status(404).json({ message: "Product not found" });

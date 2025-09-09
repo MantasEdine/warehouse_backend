@@ -42,7 +42,7 @@ export const connectDB = async () => {
     // Trying to reestablish a connection with a delay using setTimeout()
     setTimeout(() => {
       mongoose.connect(url, {
-        keepAlive: true,          // keep TCP connection alive with MongoDB
+           // keep TCP connection alive with MongoDB
         socketTimeoutMS: 3000,    // time interval before killing inactive socket
         connectTimeoutMS: 3000,   // waiting interval before throwing error
       });

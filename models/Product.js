@@ -14,6 +14,17 @@ const productSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
+    price: {
+      type: Number,
+      required: true,
+      min: 0,
+      default: 0, // in Algerian Dinar (DZA)
+    },
+    currency: {
+      type: String,
+      default: "DZA",
+      enum: ["DZA"], // lock to Algerian Dinar
+    },
   },
   {
     timestamps: true, // adds createdAt & updatedAt automatically

@@ -6,11 +6,15 @@ import helmet from "helmet";
 import createHttpError from "http-errors"; // not used yet
 import { connectDB } from "./config/database.js";
 import cookieParser from "cookie-parser";
-import authRoutes from "./routes/authRoutes.js"
-import productsRoutes from "./routes/productRoutes.js"
+import authRoutes from "./routes/authRoutes.js";
+import productsRoutes from "./routes/productRoutes.js";
 import deliveryGuyRoutes from "./routes/deliveryGuyRoutes.js";
+import deliveryLogs from "./routes/deliveryLogsRoutes.js";
+import storeRoutes from "./routes/storeRoutes.js";
 
-
+// NEW IMPORTS
+import { createServer } from "http";
+import { Server } from "socket.io";
 
 dotenv.config();
 
@@ -31,11 +35,11 @@ connectDB();
 app.get("/", (req, res) => {
   res.send("Hello World 🚀");
 });
-app.use("/api/auth",authRoutes);
-app.use("/api/products",productsRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/products", productsRoutes);
 app.use("/api/drivers", deliveryGuyRoutes);
-
-
+app.use("/api/logs", deliveryLogs);
+app.use("/api/store", storeRoutes);
 
 // Error handler
 app.use((err, req, res, next) => {
@@ -45,8 +49,25 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server
+// --------------------- SOCKET.IO ---------------------
+// Wrap your app in HTTP server
+const httpServer = createServer(app);
+
+// Attach Socket.IO
+export const io = new Server(httpServer, {
+  cors: { origin: "*", methods: ["GET", "POST"] }, // adjust origin in production
+});
+
+// Listen for connections
+io.on("connection", (socket) => {
+  console.log("✅ New client connected:", socket.id);
+  socket.on("disconnect", () => {
+    console.log("❌ Client disconnected:", socket.id);
+  });
+});
+
+// Start server using httpServer instead of app.listen
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`✅ App listening on PORT: ${PORT}`);
 });
