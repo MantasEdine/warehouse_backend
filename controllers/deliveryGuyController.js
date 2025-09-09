@@ -26,7 +26,7 @@ export const updateDriver = async (req, res, next) => {
     const driver = await DeliveryGuy.findById(id).populate("productsOwned.product");
     if (!driver) return res.status(404).json({ message: "Driver not found" });
 
-    // === DRIVER RESTRICTIONS ===
+    // ========== DRIVER RESTRICTIONS ==========
     if (userRole === "driver") {
       if (driver.user.toString() !== userId.toString()) {
         return res.status(403).json({ message: "Forbidden" });
@@ -35,36 +35,35 @@ export const updateDriver = async (req, res, next) => {
         return res.status(400).json({ message: "No products provided to update" });
       }
 
-      // Driver can only reduce stock they already own
       for (const updateItem of req.body.productsOwned) {
         const existingItem = driver.productsOwned.find(
           (p) => p.product._id.toString() === updateItem.productId
         );
         if (!existingItem) continue;
 
-        if (updateItem.quantity > existingItem.quantity) {
-          return res.status(400).json({ message: "Drivers cannot increase stock" });
+        const product = await Product.findById(existingItem.product._id);
+        if (!product) continue;
+
+        const oldQty = existingItem.quantity;
+        const newQty = updateItem.quantity;
+
+        // ✅ driver can only reduce his own quantity
+        if (newQty > oldQty) {
+          return res.status(403).json({ message: "Drivers cannot increase stock" });
         }
 
-        // return difference to warehouse
-        const delta = existingItem.quantity - updateItem.quantity;
-        if (delta > 0) {
-          const product = await Product.findById(existingItem.product._id);
-          if (product) {
-            product.quantity += delta;
-            await product.save();
-          }
-        }
+        const delta = newQty - oldQty; // will always be negative or 0
+        product.quantity -= delta; // subtracting negative = restoring stock
+        existingItem.quantity = newQty;
 
-        existingItem.quantity = updateItem.quantity;
+        await product.save();
       }
 
       await driver.save();
-      await driver.populate("productsOwned.product");
       return res.status(200).json(driver);
     }
 
-    // === ADMIN CAN UPDATE EVERYTHING ===
+    // ========== ADMIN CAN UPDATE EVERYTHING ==========
     const { name, email, truckModel, productsOwned } = req.body;
     if (name) driver.name = name;
     if (email) driver.email = email;
@@ -75,32 +74,41 @@ export const updateDriver = async (req, res, next) => {
         const existingItem = driver.productsOwned.find(
           (p) => p.product._id.toString() === updateItem.productId
         );
+
         const product = await Product.findById(updateItem.productId);
         if (!product) continue;
 
         if (existingItem) {
-          // adjust warehouse stock based on delta
-          const delta = updateItem.quantity - existingItem.quantity;
-          product.quantity -= delta;
-          if (product.quantity < 0) product.quantity = 0;
-          await product.save();
+          const oldQty = existingItem.quantity;
+          const newQty = updateItem.quantity;
+          const delta = newQty - oldQty;
 
-          existingItem.quantity = updateItem.quantity;
+          if (delta > 0 && product.quantity < delta) {
+            return res.status(400).json({ message: "Not enough stock available" });
+          }
+
+          product.quantity -= delta;
+          existingItem.quantity = newQty;
+
+          await product.save();
         } else {
-          // new product assignment
+          // assigning new product
+          if (product.quantity < updateItem.quantity) {
+            return res.status(400).json({ message: "Not enough stock available" });
+          }
+
           driver.productsOwned.push({
             product: updateItem.productId,
             quantity: updateItem.quantity,
           });
+
           product.quantity -= updateItem.quantity;
-          if (product.quantity < 0) product.quantity = 0;
           await product.save();
         }
       }
     }
 
     await driver.save();
-    await driver.populate("productsOwned.product");
     return res.status(200).json(driver);
   } catch (err) {
     console.error("Update driver error:", err);
