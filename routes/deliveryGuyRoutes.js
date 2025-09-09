@@ -4,12 +4,13 @@ import {
   updateDriver,
   deleteDriver,
 } from "../controllers/deliveryGuyController.js";
+import { protect } from "../middlewares/authMiddlewares.js";
 
 const router = express.Router();
 
 // Base path: /api/drivers
 router.get("/", getAllDrivers);
-router.patch("/:id", updateDriver);
-router.delete("/:id", deleteDriver);
+router.patch("/:id", protect , updateDriver);
+router.delete("/:id", protect , deleteDriver);
 
 export default router;
