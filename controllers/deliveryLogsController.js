@@ -13,7 +13,6 @@ import mongoose from "mongoose";
 export const createDeliveryLog = async (req, res) => {
   try {
     const { deliveryGuyId, storeId, products } = req.body;
-    // products = [{ productId, quantity }]
 
     if (!deliveryGuyId || !storeId || !products || products.length === 0) {
       return res.status(400).json({ message: "Missing required fields" });
@@ -24,31 +23,62 @@ export const createDeliveryLog = async (req, res) => {
     if (!deliveryGuy) return res.status(404).json({ message: "DeliveryGuy not found" });
     if (!store) return res.status(404).json({ message: "Store not found" });
 
+    // ✅ Validate driver stock
+    for (const item of products) {
+      const ownedItem = deliveryGuy.productsOwned.find(
+        (p) => p.product.toString() === item.productId
+      );
+
+      if (!ownedItem || ownedItem.quantity <= 0) {
+        return res
+          .status(400)
+          .json({ message: `Driver has no stock for product ${item.productId}` });
+      }
+
+      if (ownedItem.quantity < item.quantity) {
+        return res.status(400).json({
+          message: `Driver only has ${ownedItem.quantity} units of this product, but tried to deliver ${item.quantity}`,
+        });
+      }
+    }
+
+    // ✅ Deduct driver stock
+    products.forEach((item) => {
+      const ownedItem = deliveryGuy.productsOwned.find(
+        (p) => p.product.toString() === item.productId
+      );
+      if (ownedItem) {
+        ownedItem.quantity -= item.quantity;
+      }
+    });
+    await deliveryGuy.save();
+
+    // ✅ Build product log + total price
     let totalPrice = 0;
     const productLogs = [];
 
     for (const item of products) {
-  const productId = item.productId;
-  let product = null;
+      const productId = item.productId;
+      let product = null;
 
-  if (mongoose.Types.ObjectId.isValid(productId)) {
-    product = await Product.findById(productId);
-  }
+      if (mongoose.Types.ObjectId.isValid(productId)) {
+        product = await Product.findById(productId);
+      }
 
-  const price = product?.price ? Number(product.price) : Number(item.price);
-  const quantity = Number(item.quantity);
-  const total = price * quantity;
-  totalPrice += total;
+      const price = product?.price ? Number(product.price) : Number(item.price);
+      const quantity = Number(item.quantity);
+      const total = price * quantity;
+      totalPrice += total;
 
-  productLogs.push({
-    product: product?._id || productId, // use DB _id if found, else just the ID
-    quantity,
-    price,
-    total,
-  });
-}
+      productLogs.push({
+        product: product?._id || productId,
+        quantity,
+        price,
+        total,
+      });
+    }
 
-    // Handle image uploads (multer middleware puts files in req.files)
+    // ✅ Handle image uploads
     const imagePaths = [];
     if (req.files && req.files.length > 0) {
       const dest = path.join("uploads", "deliveryProofs");
@@ -56,26 +86,26 @@ export const createDeliveryLog = async (req, res) => {
 
       req.files.forEach((file) => {
         const filePath = path.join(dest, file.originalname);
-        fs.renameSync(file.path, filePath); // move file
+        fs.renameSync(file.path, filePath);
         imagePaths.push(filePath);
       });
     }
 
+    // ✅ Create delivery log
     const log = await DeliveryLog.create({
       deliveryGuy: deliveryGuy._id,
       store: store._id,
-      products: productLogs, // <-- use full objects from productLogs
-      totalPrice,            // <-- correct field name
+      products: productLogs,
+      totalPrice,
       deliveredAt: new Date(),
-      receipt: "",           // optional
+      receipt: "",
       notes: "",
       status: "completed",
       createdBy: req.user?._id || null,
     });
     io.emit("newDeliveryLog", log);
 
-
-    // Add delivered products to the store
+    // ✅ Add products to store history
     store.productsDelivered.push(
       ...productLogs.map((p) => ({
         product: p.product,
