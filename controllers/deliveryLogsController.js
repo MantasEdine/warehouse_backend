@@ -5,7 +5,7 @@ import Store from "../models/Store.js";
 import fs from "fs";
 import path from "path";
 import {io} from "../server.js"
-import mongoose from "mongoose";
+
 // @desc    Create a new delivery log
 // @route   POST /api/delivery-logs
 // @desc    Create a new delivery log
