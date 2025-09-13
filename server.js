@@ -55,7 +55,7 @@ const httpServer = createServer(app);
 
 // Attach Socket.IO
 export const io = new Server(httpServer, {
-  cors: { origin: "http://localhost:5173", methods: ["GET", "POST"] }, // adjust origin in production
+  cors: { origin: "*", methods: ["GET", "POST"] }, // adjust origin in production
 });
 
 // Listen for connections
