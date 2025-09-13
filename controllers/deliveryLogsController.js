@@ -14,71 +14,72 @@ export const createDeliveryLog = async (req, res) => {
   try {
     const { deliveryGuyId, storeId, products } = req.body;
 
+    // ✅ Validate request body
     if (!deliveryGuyId || !storeId || !products || products.length === 0) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    const deliveryGuy = await DeliveryGuy.findById(deliveryGuyId);
+    // ✅ Get delivery guy & store
+    const deliveryGuy = await DeliveryGuy.findById(deliveryGuyId).populate(
+      "productsOwned.product"
+    );
     const store = await Store.findById(storeId);
+
     if (!deliveryGuy) return res.status(404).json({ message: "DeliveryGuy not found" });
     if (!store) return res.status(404).json({ message: "Store not found" });
 
     // ✅ Validate driver stock
     for (const item of products) {
       const ownedItem = deliveryGuy.productsOwned.find(
-        (p) => p.product.toString() === item.productId
+        (p) => p.product._id.toString() === item.productId
       );
 
       if (!ownedItem || ownedItem.quantity <= 0) {
-        return res
-          .status(400)
-          .json({ message: `Driver has no stock for product ${item.productId}` });
+        return res.status(400).json({
+          message: `Driver has no stock for product ${item.productId}`,
+        });
       }
 
       if (ownedItem.quantity < item.quantity) {
         return res.status(400).json({
-          message: `Driver only has ${ownedItem.quantity} units of this product, but tried to deliver ${item.quantity}`,
+          message: `Driver only has ${ownedItem.quantity} units of ${ownedItem.product.name}, but tried to deliver ${item.quantity}`,
         });
       }
     }
 
     // ✅ Deduct driver stock
-    products.forEach((item) => {
+    for (const item of products) {
       const ownedItem = deliveryGuy.productsOwned.find(
-        (p) => p.product.toString() === item.productId
+        (p) => p.product._id.toString() === item.productId
       );
+
       if (ownedItem) {
         ownedItem.quantity -= item.quantity;
+        if (ownedItem.quantity < 0) ownedItem.quantity = 0;
       }
-    });
+    }
     await deliveryGuy.save();
 
-    // ✅ Build product log + total price
+    // ✅ Build product logs + total price
     let totalPrice = 0;
     const productLogs = [];
 
     for (const item of products) {
-      const productId = item.productId;
-      let product = null;
-
-      if (mongoose.Types.ObjectId.isValid(productId)) {
-        product = await Product.findById(productId);
-      }
-
+      const product = await Product.findById(item.productId);
       const price = product?.price ? Number(product.price) : Number(item.price);
       const quantity = Number(item.quantity);
       const total = price * quantity;
       totalPrice += total;
 
       productLogs.push({
-        product: product?._id || productId,
+        product: product?._id || item.productId,
         quantity,
         price,
         total,
       });
     }
 
-    // ✅ Handle image uploads
+    // ✅ Handle image uploads (if proof is sent)
     const imagePaths = [];
     if (req.files && req.files.length > 0) {
       const dest = path.join("uploads", "deliveryProofs");
@@ -103,6 +104,8 @@ export const createDeliveryLog = async (req, res) => {
       status: "completed",
       createdBy: req.user?._id || null,
     });
+
+    // 🔔 Notify via WebSocket
     io.emit("newDeliveryLog", log);
 
     // ✅ Add products to store history
@@ -116,6 +119,7 @@ export const createDeliveryLog = async (req, res) => {
     );
     await store.save();
 
+    // ✅ Populate log before sending response
     const populatedLog = await DeliveryLog.findById(log._id)
       .populate("deliveryGuy", "name email")
       .populate("store", "name location")
