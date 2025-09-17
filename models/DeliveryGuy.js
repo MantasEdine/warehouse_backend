@@ -5,7 +5,7 @@ const DeliveryGuySchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, lowercase: true },
     truckModel: { type: String, default: "" },
-    phoneNumber : {type : String  , unique : true , required : true},
+    phoneNumber : {type : String  , unique : true},
     productsOwned: [
       {
         product: { type: mongoose.Schema.Types.ObjectId, ref: "Product", required: true },
