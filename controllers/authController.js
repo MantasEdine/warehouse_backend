@@ -27,6 +27,7 @@ export const register = async (req, res) => {
     let driver = null;
     if (role === "driver") {
       driver = await DeliveryGuy.create({
+         _id: user._id,
         user: user._id,
         name,
         email,
