@@ -16,7 +16,7 @@ router.delete("/:id", protect, deleteDriver);
 router.patch("/:id/remove", protect, removeDriverProduct); // 👈 fixed path
 router.get("/:id", async (req, res) => {
   try {
-    const driver = await DeliveryGuy.findById(req.params.id);
+    const driver = await DeliveryGuy.findById(req.params.id).populate("productsOwned.product");;
     if (!driver) return res.status(404).json({ message: "Driver not found" });
     res.json(driver);
   } catch (err) {
